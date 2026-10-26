@@ -119,3 +119,23 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compiles_minimal_document() {
+        let src = r"\documentclass{article}\begin{document}Hello\end{document}";
+        let b64 = compile(src).expect("should compile");
+        let pdf = STANDARD.decode(b64).unwrap();
+        assert!(pdf.starts_with(b"%PDF"));
+    }
+
+    #[test]
+    fn reports_errors() {
+        let src = r"\documentclass{article}\begin{document}\undefinedcmd\end{document}";
+        let err = compile(src).unwrap_err();
+        assert!(err.contains("Undefined control sequence"), "{err}");
+    }
+}
