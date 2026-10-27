@@ -18,7 +18,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    "paths": { "monaco-esm/*": ["./node_modules/monaco-editor/esm/vs/*"] }
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
