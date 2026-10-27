@@ -37,3 +37,11 @@ npm run tauri dev
 `npm install` also downloads the Tectonic binary for your platform into `src-tauri/binaries` (checksum-verified).
 
 Releases are built by GitHub Actions when a `v*` tag is pushed.
+
+## Contributing
+
+Contributions are welcome. Fork the repository, create a branch and open a pull request against `master`. Every pull request is built and tested automatically; please make sure `npm run build` and `cargo test` (in `src-tauri`) pass.
+
+## License
+
+[MIT](LICENSE). Lasty bundles the Tectonic engine, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
