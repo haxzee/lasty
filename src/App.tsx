@@ -1,80 +1,83 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import Editor from "./components/Editor";
-import Preview from "./components/Preview";
-import Toolbar, { type Status } from "./components/Toolbar";
-import "./App.css";
+import { useEffect, useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { api, type ProjectInfo } from "./api";
+import SettingsDialog from "./components/SettingsDialog";
+import Welcome from "./components/Welcome";
+import Workspace from "./components/Workspace";
+import { isMac, type Theme } from "./components/ui";
+import { SettingsProvider, useSettings } from "./settings";
 
-const DEBOUNCE_MS = 300;
+if (isMac) document.documentElement.classList.add("native-glass");
 
-const INITIAL_SOURCE = String.raw`\documentclass{article}
-\usepackage{amsmath}
+function Shell() {
+  const { settings, update } = useSettings();
+  const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [booting, setBooting] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { theme } = settings;
 
-\title{Hello Lasty}
-\author{}
-\date{\today}
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", theme !== "light");
+    root.classList.toggle("oled", theme === "oled");
+    getCurrentWindow().setTheme(theme === "light" ? "light" : "dark").catch(() => {});
+  }, [theme]);
 
-\begin{document}
-\maketitle
+  useEffect(() => {
+    document.documentElement.classList.toggle("no-typing-animation", !settings.typingAnimation);
+  }, [settings.typingAnimation]);
 
-\section{Introduction}
-Edit me on the left -- the preview updates automatically.
-
-\[
-  e^{i\pi} + 1 = 0
-\]
-
-\end{document}
-`;
-
-export default function App() {
-  const [source, setSource] = useState(INITIAL_SOURCE);
-  const [pdf, setPdf] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<Status>("ready");
-  const [theme, setTheme] = useState<"light" | "dark">(
-    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-  );
-  // Only the latest request may update state; older results are discarded.
-  const requestId = useRef(0);
-
-  const compile = useCallback(async (code: string) => {
-    const id = ++requestId.current;
-    setStatus("compiling");
-    try {
-      const result = await invoke<string>("compile_latex", { sourceCode: code });
-      if (id !== requestId.current) return;
-      setPdf(result);
-      setError(null);
-      setStatus("success");
-    } catch (e) {
-      if (id !== requestId.current) return;
-      setError(String(e));
-      setStatus("error");
-    }
+  useEffect(() => {
+    if (!settings.reopenLastProject) return setBooting(false);
+    api
+      .lastProject()
+      .then((path) => (path ? api.openProject(path) : null))
+      .then(setProject)
+      .catch(() => setProject(null))
+      .finally(() => setBooting(false));
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => compile(source), DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [source, compile]);
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        e.stopPropagation();
+        setSettingsOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  async function close() {
+    await api.closeProject();
+    setProject(null);
+  }
+
+  if (booting) return null;
+
+  const setTheme = (t: Theme) => update({ theme: t });
+  const openSettings = () => setSettingsOpen(true);
 
   return (
-    <div className={`app theme-${theme}`}>
-      <Toolbar
-        status={status}
-        theme={theme}
-        onToggleTheme={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-        onCompile={() => compile(source)}
-      />
-      <main className="split">
-        <section className="pane">
-          <Editor value={source} onChange={setSource} theme={theme} />
-        </section>
-        <section className="pane">
-          <Preview pdfBase64={pdf} error={error} />
-        </section>
-      </main>
-    </div>
+    <>
+      {project ? (
+        <Workspace
+          key={project.path}
+          project={project}
+          theme={theme}
+          onThemeChange={setTheme}
+          onOpenSettings={openSettings}
+          onClose={close}
+        />
+      ) : (
+        <Welcome onOpen={setProject} theme={theme} onThemeChange={setTheme} onOpenSettings={openSettings} />
+      )}
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
+}
+
+export default function App() {
+  return <SettingsProvider>{(loaded) => (loaded ? <Shell /> : null)}</SettingsProvider>;
 }
