@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lasty-app",
+  "productName": "Lasty",
   "version": "0.1.0",
   "identifier": "dev.haxzee.lasty-app",
   "build": {
@@ -14,7 +14,15 @@
       {
         "title": "Lasty",
         "width": 1280,
-        "height": 800
+        "height": 800,
+        "minWidth": 720,
+        "minHeight": 480,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 20,
+          "y": 20
+        }
       }
     ],
     "security": {

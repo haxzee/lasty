@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: Menlo, Monaco, "Courier New", monospace;
+}
+
+@theme inline {
+  --color-chrome: var(--chrome);
+  --color-sheet: var(--sheet);
+  --color-sidebar: var(--sidebar);
+  --color-control: var(--control);
+  --color-separator: var(--separator);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-hover: var(--hover);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-selected: var(--selected);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --color-busy: var(--busy);
+}
+
+:root {
+  --chrome: #e9e9ee;
+  --sheet: #ffffff;
+  --sidebar: #f5f5f7;
+  --control: #ffffff;
+  --separator: rgb(0 0 0 / 0.09);
+  --fg: rgb(0 0 0 / 0.86);
+  --muted: rgb(0 0 0 / 0.5);
+  --faint: rgb(0 0 0 / 0.26);
+  --hover: rgb(0 0 0 / 0.05);
+  --accent: #1d1d1f;
+  --on-accent: #ffffff;
+  --selected: rgb(0 0 0 / 0.08);
+  --ok: #28cd41;
+  --bad: #ff3b30;
+  --busy: #ff9500;
+
+  --glass: rgb(255 255 255 / 0.62);
+  --glass-strong: rgb(255 255 255 / 0.85);
+  --rim-hi: rgb(255 255 255 / 0.95);
+  --rim-lo: rgb(255 255 255 / 0.35);
+  --edge: rgb(0 0 0 / 0.07);
+  --lift: rgb(0 0 0 / 0.08);
+  color-scheme: light;
+}
+
+.dark {
+  --chrome: #18181a;
+  --sheet: #1e1e1e;
+  --sidebar: #262628;
+  --control: rgb(255 255 255 / 0.12);
+  --separator: rgb(255 255 255 / 0.09);
+  --fg: rgb(255 255 255 / 0.9);
+  --muted: rgb(255 255 255 / 0.52);
+  --faint: rgb(255 255 255 / 0.26);
+  --hover: rgb(255 255 255 / 0.08);
+  --accent: #f2f2f4;
+  --on-accent: #1d1d1f;
+  --selected: rgb(255 255 255 / 0.11);
+  --ok: #32d74b;
+  --bad: #ff453a;
+  --busy: #ff9f0a;
+
+  --glass: rgb(255 255 255 / 0.07);
+  --glass-strong: rgb(255 255 255 / 0.16);
+  --rim-hi: rgb(255 255 255 / 0.28);
+  --rim-lo: rgb(255 255 255 / 0.06);
+  --edge: rgb(255 255 255 / 0.07);
+  --lift: rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
+.dark.oled {
+  --chrome: #000000;
+  --sheet: #000000;
+  --sidebar: #000000;
+  --separator: rgb(255 255 255 / 0.1);
+  --glass: rgb(255 255 255 / 0.06);
+}
+
+html.native-glass:not(.oled),
+html.native-glass:not(.oled) body {
+  --chrome: transparent;
+  background: transparent;
+}
+html.native-glass:not(.dark) { --sheet: rgb(255 255 255 / 0.92); }
+html.native-glass.dark:not(.oled) { --sheet: rgb(30 30 30 / 0.9); }
+
+@utility glass {
+  position: relative;
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    0 0 0 0.5px var(--edge),
+    0 1px 2px var(--lift),
+    0 4px 12px -4px var(--lift);
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(145deg, var(--rim-hi), var(--rim-lo) 35%, transparent 55%, var(--rim-lo) 85%, var(--rim-hi));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-chrome text-fg font-sans antialiased select-none text-[13px] leading-snug;
+  }
+  :focus-visible { @apply outline-2 outline-offset-1 outline-muted; }
+}
+
+body.dragging { cursor: col-resize; }
+body.dragging iframe { pointer-events: none; }
+
+.monaco-editor .suggest-widget,
+.monaco-editor .suggest-details-container .suggest-details,
+.monaco-editor .monaco-hover,
+.monaco-editor .parameter-hints-widget {
+  background: color-mix(in srgb, var(--sheet) 80%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 1px 0 var(--rim-hi),
+    0 0 0 0.5px var(--edge),
+    0 12px 32px -8px var(--lift),
+    0 2px 6px var(--lift) !important;
+  overflow: hidden;
+}
+html.dark .monaco-editor .suggest-widget,
+html.dark .monaco-editor .suggest-details-container .suggest-details,
+html.dark .monaco-editor .monaco-hover {
+  background: color-mix(in srgb, #2a2a2e 78%, transparent) !important;
+}
+html.oled .monaco-editor .suggest-widget,
+html.oled .monaco-editor .suggest-details-container .suggest-details,
+html.oled .monaco-editor .monaco-hover {
+  background: color-mix(in srgb, #121214 85%, transparent) !important;
+}
+
+.monaco-editor .suggest-widget .monaco-list { padding: 4px; }
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row {
+  border-radius: 7px;
+  padding-inline: 4px;
+}
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row.focused {
+  background: var(--selected) !important;
+}
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row .suggest-icon::before {
+  opacity: 0.55;
+}
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row .label-name .highlight {
+  font-weight: 700;
+  color: inherit !important;
+}
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row .details-label,
+.monaco-editor .suggest-widget .monaco-list .monaco-list-row .label-description {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  color: var(--muted);
+  opacity: 1;
+}
+.monaco-editor .suggest-details-container .suggest-details {
+  font-family: var(--font-sans);
+}
+.monaco-editor .suggest-widget .monaco-scrollable-element > .scrollbar > .slider {
+  border-radius: 99px;
+}
+
+.monaco-editor .suggest-widget.visible,
+.monaco-editor .monaco-hover:not(.hidden),
+.monaco-editor .find-widget.visible {
+  animation: widget-in 140ms cubic-bezier(.2, .8, .2, 1);
+  transform-origin: top left;
+}
+@keyframes widget-in { from { opacity: 0; transform: scale(0.97) translateY(-2px); } }
+
+.monaco-editor .typed-fade { animation: typed-fade 200ms ease-out; }
+@keyframes typed-fade { from { opacity: 0; } }
+html.no-typing-animation .monaco-editor .typed-fade { animation: none; }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: scale(0.96) translateY(6px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .monaco-editor .typed-fade,
+  .monaco-editor .suggest-widget.visible,
+  .monaco-editor .monaco-hover:not(.hidden),
+  .monaco-editor .find-widget.visible,
+  [role="dialog"] { animation: none !important; }
+}
