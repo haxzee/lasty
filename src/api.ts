@@ -40,6 +40,7 @@ export const api = {
     invoke<string>("compile_project", { root, mainFile, engine }),
   getSettings: () => invoke<Record<string, unknown> | null>("get_settings"),
   saveSettings: (settings: object) => invoke<void>("save_settings", { settings }),
+  platform: () => invoke<{ os: string; arch: string }>("platform"),
 };
 
 const TEXT_EXTENSIONS = ["tex", "bib", "sty", "cls", "bst", "txt", "md", "cfg", "def", "ltx", "dtx"];

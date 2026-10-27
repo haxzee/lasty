@@ -81,7 +81,7 @@ export default function FileTree({ files, activeFile, mainFile, onOpen, onSetMai
         </form>
       )}
 
-      <ul className="flex-1 overflow-auto px-2.5 pb-3">
+      <ul className="flex-1 overflow-auto px-2.5 pb-14">
         {visible.map((f) => {
           const editable = !f.isDir && isEditable(f.path);
           const isMain = f.path === mainFile;

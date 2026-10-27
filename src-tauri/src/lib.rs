@@ -135,6 +135,17 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+struct Platform {
+    os: &'static str,
+    arch: &'static str,
+}
+
+#[tauri::command]
+fn platform() -> Platform {
+    Platform { os: std::env::consts::OS, arch: std::env::consts::ARCH }
+}
+
 #[tauri::command]
 fn get_settings(app: AppHandle) -> Result<serde_json::Value, String> {
     let file = settings_path(&app)?;
@@ -191,6 +202,7 @@ pub fn run() {
             compile_project,
             get_settings,
             save_settings,
+            platform,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

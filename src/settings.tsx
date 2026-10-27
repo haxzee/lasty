@@ -7,6 +7,7 @@ export type Engine = "auto" | "pdflatex" | "xelatex" | "lualatex" | "tectonic";
 
 export interface Settings {
   reopenLastProject: boolean;
+  checkForUpdates: boolean;
   theme: Theme;
   editorColors: EditorColors;
   editorFontFamily: string;
@@ -30,6 +31,7 @@ export const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace';
 
 export const DEFAULT_SETTINGS: Settings = {
   reopenLastProject: true,
+  checkForUpdates: true,
   theme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
   editorColors: "color",
   editorFontFamily: DEFAULT_FONT_FAMILY,

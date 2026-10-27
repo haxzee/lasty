@@ -220,6 +220,9 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
                   <Row label="Reopen last project on launch" hint="Otherwise Lasty starts on the welcome screen.">
                     <Toggle label="Reopen last project" checked={s.reopenLastProject} onChange={(v) => update({ reopenLastProject: v })} />
                   </Row>
+                  <Row label="Check for updates" hint="Asks GitHub at launch whether a newer version of Lasty exists. Nothing else is sent.">
+                    <Toggle label="Check for updates" checked={s.checkForUpdates} onChange={(v) => update({ checkForUpdates: v })} />
+                  </Row>
                 </Group>
                 <Group>
                   <Row label="Reset all settings" hint="Restores every option on this page to its default.">

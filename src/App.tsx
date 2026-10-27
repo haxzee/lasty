@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api, type ProjectInfo } from "./api";
 import SettingsDialog from "./components/SettingsDialog";
+import UpdateButton from "./components/UpdateButton";
 import Welcome from "./components/Welcome";
 import Workspace from "./components/Workspace";
 import { isMac, type Theme } from "./components/ui";
@@ -73,6 +74,7 @@ function Shell() {
       ) : (
         <Welcome onOpen={setProject} theme={theme} onThemeChange={setTheme} onOpenSettings={openSettings} />
       )}
+      <UpdateButton />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
