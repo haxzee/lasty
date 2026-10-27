@@ -3,6 +3,7 @@ name = "lasty-app"
 version = "0.1.0"
 description = "Local LaTeX editor with live PDF preview"
 authors = ["stoegerer_simon"]
+license = "MIT"
 edition = "2024"
 
 [lib]
