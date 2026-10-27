@@ -154,12 +154,18 @@ fn save_settings(app: AppHandle, settings: serde_json::Value) -> Result<(), Stri
     fs::write(file, json).map_err(|e| format!("Failed to save settings: {e}"))
 }
 
+fn bundled_tectonic() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let bin = exe.parent()?.join(format!("tectonic{}", std::env::consts::EXE_SUFFIX));
+    bin.is_file().then_some(bin)
+}
+
 #[tauri::command]
 async fn compile_project(root: String, main_file: String, engine: Option<String>) -> Result<String, String> {
     let root_path = project_root(&root)?;
     project::resolve(&root_path, &main_file)?;
     let engine = engine.unwrap_or_else(|| "auto".into());
-    tauri::async_runtime::spawn_blocking(move || compiler::compile(&root_path, &main_file, &engine))
+    tauri::async_runtime::spawn_blocking(move || compiler::compile(&root_path, &main_file, &engine, bundled_tectonic().as_deref()))
         .await
         .map_err(|e| format!("Compile task panicked: {e}"))?
 }

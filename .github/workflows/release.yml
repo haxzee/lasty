@@ -15,12 +15,16 @@ jobs:
       matrix:
         include:
           - platform: macos-latest
+            target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin
           - platform: macos-latest
+            target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin
           - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
             args: ""
           - platform: windows-latest
+            target: x86_64-pc-windows-msvc
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -48,6 +52,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Bundle Tectonic
+        run: node scripts/fetch-tectonic.mjs --target ${{ matrix.target }}
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -60,7 +67,7 @@ jobs:
             - **Windows**: `.msi` or `-setup.exe`
             - **Linux**: `.AppImage`, `.deb` or `.rpm`
 
-            Lasty needs a local LaTeX installation (TeX Live, MacTeX, MiKTeX) or tectonic.
+            No LaTeX installation needed: Lasty includes the Tectonic engine. The first compile downloads the packages your document uses once.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

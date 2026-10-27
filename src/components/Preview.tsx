@@ -3,11 +3,22 @@ import { useEffect, useState } from "react";
 interface PreviewProps {
   pdfBase64: string | null;
   error: string | null;
+  compiling: boolean;
 }
 
-export default function Preview({ pdfBase64, error }: PreviewProps) {
+const SLOW_MS = 4000;
+const SLOW_HINT = "Downloading LaTeX packages. This happens only the first time a package is used.";
+
+export default function Preview({ pdfBase64, error, compiling }: PreviewProps) {
   const [url, setUrl] = useState<string | null>(null);
   const [logOpen, setLogOpen] = useState(true);
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!compiling) return setSlow(false);
+    const timer = window.setTimeout(() => setSlow(true), SLOW_MS);
+    return () => clearTimeout(timer);
+  }, [compiling]);
 
   useEffect(() => {
     if (!pdfBase64) return;
@@ -23,12 +34,18 @@ export default function Preview({ pdfBase64, error }: PreviewProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
+        {url && slow && (
+          <div className="glass absolute bottom-3 left-1/2 z-10 max-w-[90%] -translate-x-1/2 rounded-full px-4 py-1.5 text-center text-xs text-muted">
+            {SLOW_HINT}
+          </div>
+        )}
         {url ? (
           <iframe title="PDF preview" src={url} className={`flex-1 border-0 ${error ? "opacity-40" : ""}`} />
         ) : (
-          <div className="m-auto px-6 text-center text-muted">
+          <div className="m-auto max-w-sm px-6 text-center text-muted">
             {error ? "Fix the error below to see your document." : "Typesetting…"}
+            {!error && slow && <p className="mt-2 text-xs">{SLOW_HINT}</p>}
           </div>
         )}
       </div>

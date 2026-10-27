@@ -28,8 +28,19 @@ fn find_executable(name: &str, path: &OsString) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+fn command(bin: &Path) -> Command {
+    let mut cmd = Command::new(bin);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd
+}
+
 fn run_tex(bin: &Path, root: &Path, main: &str, out: &Path, path: &OsString) -> std::io::Result<Output> {
-    Command::new(bin)
+    command(bin)
         .current_dir(root)
         .env("PATH", path)
         .arg("-interaction=nonstopmode")
@@ -42,7 +53,7 @@ fn run_tex(bin: &Path, root: &Path, main: &str, out: &Path, path: &OsString) -> 
 }
 
 fn run_tectonic(bin: &Path, root: &Path, main: &str, out: &Path, path: &OsString) -> std::io::Result<Output> {
-    Command::new(bin)
+    command(bin)
         .current_dir(root)
         .env("PATH", path)
         .args(["--chatter", "minimal", "--outdir"])
@@ -74,7 +85,11 @@ fn summarize_log(log: &str) -> String {
 
 const TEX_ENGINES: &[&str] = &["pdflatex", "xelatex", "lualatex"];
 
-pub fn compile(root: &Path, main: &str, engine: &str) -> Result<String, String> {
+fn find_tectonic(path: &OsString, bundled: Option<&Path>) -> Option<PathBuf> {
+    find_executable("tectonic", path).or_else(|| bundled.filter(|b| b.is_file()).map(Path::to_path_buf))
+}
+
+pub fn compile(root: &Path, main: &str, engine: &str, bundled_tectonic: Option<&Path>) -> Result<String, String> {
     let out = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
     let pdf_name = Path::new(main).with_extension("pdf");
     let pdf_path = out.path().join(pdf_name.file_name().unwrap_or_default());
@@ -84,14 +99,14 @@ pub fn compile(root: &Path, main: &str, engine: &str) -> Result<String, String> 
         "auto" => {
             if let Some(bin) = find_executable("pdflatex", &path) {
                 run_tex(&bin, root, main, out.path(), &path)
-            } else if let Some(bin) = find_executable("tectonic", &path) {
+            } else if let Some(bin) = find_tectonic(&path, bundled_tectonic) {
                 run_tectonic(&bin, root, main, out.path(), &path)
             } else {
-                return Err("No LaTeX compiler found. Install TeX Live / MacTeX / MiKTeX (pdflatex) or tectonic.".into());
+                return Err("No LaTeX compiler found. Reinstall Lasty, or install TeX Live / MacTeX / MiKTeX.".into());
             }
         }
         "tectonic" => {
-            let bin = find_executable("tectonic", &path).ok_or_else(|| not_found("tectonic"))?;
+            let bin = find_tectonic(&path, bundled_tectonic).ok_or_else(|| not_found("tectonic"))?;
             run_tectonic(&bin, root, main, out.path(), &path)
         }
         name if TEX_ENGINES.contains(&name) => {
@@ -125,7 +140,7 @@ mod tests {
     fn compile_source(src: &str) -> Result<String, String> {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("main.tex"), src).unwrap();
-        let result = compile(dir.path(), "main.tex", "auto");
+        let result = compile(dir.path(), "main.tex", "auto", None);
         assert!(!dir.path().join("main.aux").exists());
         result
     }
@@ -148,7 +163,7 @@ mod tests {
     #[test]
     fn rejects_unknown_engine() {
         let dir = tempfile::tempdir().unwrap();
-        let err = compile(dir.path(), "main.tex", "word").unwrap_err();
+        let err = compile(dir.path(), "main.tex", "word", None).unwrap_err();
         assert!(err.contains("Unknown compiler"), "{err}");
     }
 
@@ -159,7 +174,24 @@ mod tests {
         }
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("main.tex"), r"\documentclass{article}\begin{document}Grüße\end{document}").unwrap();
-        compile(dir.path(), "main.tex", "xelatex").expect("xelatex should compile");
+        compile(dir.path(), "main.tex", "xelatex", None).expect("xelatex should compile");
+    }
+
+    fn bundled_binary() -> Option<PathBuf> {
+        fs::read_dir(Path::new(env!("CARGO_MANIFEST_DIR")).join("binaries"))
+            .ok()?
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| p.file_name().is_some_and(|n| n.to_string_lossy().starts_with("tectonic-")))
+    }
+
+    #[test]
+    #[ignore = "needs network on first run to fetch LaTeX packages"]
+    fn bundled_tectonic_compiles() {
+        let bin = bundled_binary().expect("run `npm run fetch-tectonic` first");
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("main.tex"), r"\documentclass{article}\begin{document}Hi\end{document}").unwrap();
+        compile(dir.path(), "main.tex", "tectonic", Some(&bin)).expect("bundled tectonic should compile");
     }
 
     #[test]
@@ -172,6 +204,6 @@ mod tests {
             r"\documentclass{article}\begin{document}\input{chapters/intro}\end{document}",
         )
         .unwrap();
-        compile(dir.path(), "main.tex", "auto").expect("should compile with \\input");
+        compile(dir.path(), "main.tex", "auto", None).expect("should compile with \\input");
     }
 }

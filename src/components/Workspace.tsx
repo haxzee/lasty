@@ -280,7 +280,7 @@ export default function Workspace({ project, theme, onThemeChange, onOpenSetting
             <div className="h-8 w-[3px] rounded-full bg-faint opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
           <section className="min-w-0 overflow-hidden rounded-[14px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)]">
-            <Preview pdfBase64={pdf} error={error} />
+            <Preview pdfBase64={pdf} error={error} compiling={status === "compiling"} />
           </section>
         </div>
       </div>

@@ -7,13 +7,15 @@ A local LaTeX editor with live PDF preview for macOS, Windows and Linux. Everyth
 - Projects are plain folders; create a new one or open an existing folder
 - Live preview: saves and recompiles shortly after you stop typing
 - VS Code editor (Monaco) with LaTeX highlighting, autocomplete for commands, environments, `\ref`, `\cite` and packages, and automatic `\end{…}`
-- pdfLaTeX, XeLaTeX, LuaLaTeX or Tectonic
+- Built-in Tectonic engine, or an installed pdfLaTeX, XeLaTeX or LuaLaTeX
 - Light, Dark and OLED themes; native Liquid Glass on macOS
 - Settings with `⌘,` / `Ctrl+,`, editor zoom with `⌘ +` / `⌘ −`
 
 ## Requirements
 
-A LaTeX distribution: [MacTeX](https://tug.org/mactex/), [TeX Live](https://tug.org/texlive/), [MiKTeX](https://miktex.org/) or [Tectonic](https://tectonic-typesetting.github.io/).
+None. Lasty ships with the [Tectonic](https://tectonic-typesetting.github.io/) LaTeX engine. The first compile downloads the LaTeX packages your document uses (usually 20–50 MB) and caches them; after that it works offline.
+
+If [MacTeX](https://tug.org/mactex/), [TeX Live](https://tug.org/texlive/) or [MiKTeX](https://miktex.org/) is installed, Lasty uses its pdfLaTeX instead. XeLaTeX and LuaLaTeX can be picked in Settings when installed.
 
 ## Install
 
@@ -31,5 +33,7 @@ xattr -cr /Applications/Lasty.app
 npm install
 npm run tauri dev
 ```
+
+`npm install` also downloads the Tectonic binary for your platform into `src-tauri/binaries` (checksum-verified).
 
 Releases are built by GitHub Actions when a `v*` tag is pushed.

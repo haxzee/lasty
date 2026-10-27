@@ -56,7 +56,7 @@ const ENGINES: { value: Engine; label: string }[] = [
   { value: "pdflatex", label: "pdfLaTeX" },
   { value: "xelatex", label: "XeLaTeX" },
   { value: "lualatex", label: "LuaLaTeX" },
-  { value: "tectonic", label: "Tectonic" },
+  { value: "tectonic", label: "Tectonic (built in)" },
 ];
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -323,7 +323,7 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
 
             {section === "compiler" && (
               <Group>
-                <Row label="LaTeX engine" hint="Automatic uses pdfLaTeX, or Tectonic if pdfLaTeX isn't installed. XeLaTeX and LuaLaTeX support system fonts.">
+                <Row label="LaTeX engine" hint="Automatic uses an installed pdfLaTeX, otherwise the Tectonic engine built into Lasty. XeLaTeX and LuaLaTeX need a TeX installation.">
                   <Select<Engine> value={s.engine} options={ENGINES} onChange={(engine) => update({ engine })} />
                 </Row>
                 <Row label="Compile while typing" hint="Otherwise compile with ⌘S / Ctrl+S or the Compile button.">
