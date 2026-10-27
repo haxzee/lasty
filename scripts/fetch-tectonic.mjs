@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,7 +75,7 @@ async function main() {
     const tar = process.platform === "win32" ? "C:\\Windows\\System32\\tar.exe" : "tar";
     execFileSync(tar, ["-xf", archive, "-C", work]);
     mkdirSync(outDir, { recursive: true });
-    renameSync(join(work, `tectonic${exe}`), dest);
+    copyFileSync(join(work, `tectonic${exe}`), dest);
     if (!exe) chmodSync(dest, 0o755);
   } finally {
     rmSync(work, { recursive: true, force: true });
