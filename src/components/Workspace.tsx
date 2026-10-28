@@ -14,7 +14,6 @@ const DEFAULT_FONT_SIZE = 13;
 interface WorkspaceProps {
   project: ProjectInfo;
   theme: Theme;
-  onThemeChange: (theme: Theme) => void;
   onOpenSettings: () => void;
   onClose: () => void;
 }
@@ -27,11 +26,12 @@ function readSplit() {
   }
 }
 
-export default function Workspace({ project, theme, onThemeChange, onOpenSettings, onClose }: WorkspaceProps) {
+export default function Workspace({ project, theme, onOpenSettings, onClose }: WorkspaceProps) {
   const root = project.path;
   const [files, setFiles] = useState(project.files);
   const [mainFile, setMainFile] = useState(project.mainFile);
   const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [openFiles, setOpenFiles] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [saved, setSaved] = useState(true);
   const [pdf, setPdf] = useState<string | null>(null);
@@ -99,6 +99,7 @@ export default function Workspace({ project, theme, onThemeChange, onOpenSetting
       try {
         setContent(await api.readFile(root, file));
         setActiveFile(file);
+        setOpenFiles((open) => (open.includes(file) ? open : [...open, file]));
         setSaved(true);
       } catch (e) {
         setError(String(e));
@@ -131,6 +132,21 @@ export default function Workspace({ project, theme, onThemeChange, onOpenSetting
     timer.current = window.setTimeout(async () => {
       if ((await flush()) && settingsRef.current.autoCompile) compile();
     }, settingsRef.current.compileDelay);
+  }
+
+  async function closeFile(file: string) {
+    const index = openFiles.indexOf(file);
+    const rest = openFiles.filter((f) => f !== file);
+    if (file === activeFile) {
+      const next = rest[Math.min(index, rest.length - 1)];
+      if (next) await openFile(next);
+      else {
+        await flush();
+        setActiveFile(null);
+        setContent("");
+      }
+    }
+    setOpenFiles(rest);
   }
 
   const compileNow = useCallback(async () => {
@@ -173,7 +189,9 @@ export default function Workspace({ project, theme, onThemeChange, onOpenSetting
   }, [settings.engine]);
 
   const refreshFiles = useCallback(async () => {
-    setFiles(await api.listFiles(root));
+    const list = await api.listFiles(root);
+    setFiles(list);
+    setOpenFiles((open) => open.filter((f) => list.some((l) => l.path === f)));
   }, [root]);
 
   async function createFile(path: string) {
@@ -239,13 +257,14 @@ export default function Workspace({ project, theme, onThemeChange, onOpenSetting
 
       <div className="flex min-w-0 flex-1 flex-col pb-2 pr-2 max-md:pl-2">
         <Toolbar
+          openFiles={openFiles}
           activeFile={activeFile}
           saved={saved}
           status={status}
-          theme={theme}
-          onThemeChange={onThemeChange}
           onOpenSettings={onOpenSettings}
           onCompile={compileNow}
+          onSelectFile={(f) => f !== activeFile && openFile(f)}
+          onCloseFile={closeFile}
         />
         <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${split}fr 8px ${100 - split}fr` }}>
           <section className="relative min-w-0 overflow-hidden rounded-[14px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)]">

@@ -1,4 +1,4 @@
-import { Button, Icon, IconButton, ThemePicker, isMac, type Theme } from "./ui";
+import { Button, Icon, IconButton, isMac } from "./ui";
 
 export type Status = "ready" | "compiling" | "success" | "error";
 
@@ -10,30 +10,75 @@ const STATUS: Record<Status, { label: string; dot: string; text: string }> = {
 };
 
 interface ToolbarProps {
+  openFiles: string[];
   activeFile: string | null;
   saved: boolean;
   status: Status;
-  theme: Theme;
-  onThemeChange: (theme: Theme) => void;
   onOpenSettings: () => void;
   onCompile: () => void;
+  onSelectFile: (file: string) => void;
+  onCloseFile: (file: string) => void;
 }
 
-export default function Toolbar({ activeFile, saved, status, theme, onThemeChange, onOpenSettings, onCompile }: ToolbarProps) {
+export default function Toolbar({
+  openFiles,
+  activeFile,
+  saved,
+  status,
+  onOpenSettings,
+  onCompile,
+  onSelectFile,
+  onCloseFile,
+}: ToolbarProps) {
   const s = STATUS[status];
   return (
     <header
       data-tauri-drag-region
       className={`flex h-[52px] shrink-0 items-center gap-2 pr-2 ${isMac ? "max-md:pl-20" : ""}`}
     >
-      <div className="glass flex h-8 min-w-0 items-center gap-2 rounded-full px-3.5">
-        <Icon className="size-3.5 shrink-0 text-muted">
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-          <path d="M14 3v5h5" />
-        </Icon>
-        <span className="truncate font-medium">{activeFile ?? "No file open"}</span>
-        {!saved && <span className="text-xs text-muted">Edited</span>}
-      </div>
+      {openFiles.length ? (
+        <div
+          role="tablist"
+          className="glass flex h-8 min-w-0 items-center gap-0.5 overflow-x-auto rounded-full p-0.5 [scrollbar-width:none]"
+        >
+          {openFiles.map((file) => {
+            const active = file === activeFile;
+            return (
+              <div
+                key={file}
+                role="tab"
+                aria-selected={active}
+                title={file}
+                onClick={() => onSelectFile(file)}
+                onAuxClick={(e) => e.button === 1 && onCloseFile(file)}
+                className={`group flex h-7 shrink-0 cursor-default items-center gap-1.5 rounded-full pl-3 pr-1 transition-colors duration-150 ${
+                  active ? "bg-control text-fg shadow-[0_0.5px_2px_rgb(0_0_0/0.2)]" : "text-muted hover:bg-hover hover:text-fg"
+                }`}
+              >
+                <span className="max-w-40 truncate font-medium">{file.split("/").pop()}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCloseFile(file);
+                  }}
+                  title="Close"
+                  aria-label={`Close ${file}`}
+                  className="grid size-5 cursor-default place-items-center rounded-full hover:bg-hover"
+                >
+                  {active && !saved ? (
+                    <span className="size-1.5 rounded-full bg-current group-hover:hidden" />
+                  ) : null}
+                  <Icon className={`size-3 ${active && !saved ? "hidden group-hover:block" : active ? "" : "opacity-0 group-hover:opacity-100"}`}>
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </Icon>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="glass flex h-8 min-w-0 items-center rounded-full px-3.5 text-muted">No file open</div>
+      )}
 
       <div data-tauri-drag-region className="h-full flex-1" />
 
@@ -41,7 +86,6 @@ export default function Toolbar({ activeFile, saved, status, theme, onThemeChang
         <span className={`size-2 rounded-full ${s.dot}`} />
         {s.label}
       </div>
-      <ThemePicker theme={theme} onChange={onThemeChange} />
       <IconButton onClick={onOpenSettings} title={`Settings (${isMac ? "⌘," : "Ctrl+,"})`}>
         <Icon className="size-4">
           <circle cx="12" cy="12" r="3" />

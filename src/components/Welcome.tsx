@@ -3,13 +3,11 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { getVersion } from "@tauri-apps/api/app";
 import { api, type ProjectInfo, type RecentProject } from "../api";
-import { Button, Icon, IconButton, ThemePicker, isMac, type Theme } from "./ui";
+import { Button, Icon, IconButton, isMac } from "./ui";
 import { AppIcon } from "./AppIcon";
 
 interface WelcomeProps {
   onOpen: (project: ProjectInfo) => void;
-  theme: Theme;
-  onThemeChange: (theme: Theme) => void;
   onOpenSettings: () => void;
 }
 
@@ -37,7 +35,7 @@ function ActionRow({ icon, title, subtitle, onClick }: { icon: React.ReactNode; 
   );
 }
 
-export default function Welcome({ onOpen, theme, onThemeChange, onOpenSettings }: WelcomeProps) {
+export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
   const [recent, setRecent] = useState<RecentProject[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState("");
@@ -95,7 +93,6 @@ export default function Welcome({ onOpen, theme, onThemeChange, onOpenSettings }
     <div className="flex h-full">
       <div className="flex min-w-0 flex-1 flex-col">
         <div data-tauri-drag-region className="flex h-[52px] shrink-0 items-center justify-end px-3">
-          <ThemePicker theme={theme} onChange={onThemeChange} />
           <IconButton onClick={onOpenSettings} title={`Settings (${isMac ? "⌘," : "Ctrl+,"})`}>
             <Icon className="size-4">
               <circle cx="12" cy="12" r="3" />

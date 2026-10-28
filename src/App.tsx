@@ -5,13 +5,13 @@ import SettingsDialog from "./components/SettingsDialog";
 import UpdateButton from "./components/UpdateButton";
 import Welcome from "./components/Welcome";
 import Workspace from "./components/Workspace";
-import { isMac, type Theme } from "./components/ui";
+import { isMac } from "./components/ui";
 import { SettingsProvider, useSettings } from "./settings";
 
 if (isMac) document.documentElement.classList.add("native-glass");
 
 function Shell() {
-  const { settings, update } = useSettings();
+  const { settings } = useSettings();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [booting, setBooting] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -57,7 +57,6 @@ function Shell() {
 
   if (booting) return null;
 
-  const setTheme = (t: Theme) => update({ theme: t });
   const openSettings = () => setSettingsOpen(true);
 
   return (
@@ -67,12 +66,11 @@ function Shell() {
           key={project.path}
           project={project}
           theme={theme}
-          onThemeChange={setTheme}
           onOpenSettings={openSettings}
           onClose={close}
         />
       ) : (
-        <Welcome onOpen={setProject} theme={theme} onThemeChange={setTheme} onOpenSettings={openSettings} />
+        <Welcome onOpen={setProject} onOpenSettings={openSettings} />
       )}
       <UpdateButton />
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
