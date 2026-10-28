@@ -11,7 +11,7 @@ const ARTIFACT_EXTS: &[&str] = &[
     "nav", "snm", "vrb",
 ];
 
-pub const MAIN_TEMPLATE: &str = r"\documentclass[11pt]{article}
+pub const ARTICLE_TEMPLATE: &str = r"\documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
@@ -29,6 +29,105 @@ Start writing here. The preview updates as you type.
 
 \end{document}
 ";
+
+const THESIS_TEMPLATE: &str = r"\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\title{Untitled}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\input{chapters/introduction}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+";
+
+const THESIS_INTRO: &str = r"\chapter{Introduction}
+\label{chap:introduction}
+
+Start writing here.
+";
+
+const THESIS_BIB: &str = r"@book{knuth1984,
+  author    = {Donald E. Knuth},
+  title     = {The \TeX book},
+  publisher = {Addison-Wesley},
+  year      = {1984}
+}
+";
+
+const BEAMER_TEMPLATE: &str = r"\documentclass{beamer}
+\usetheme{default}
+\setbeamertemplate{navigation symbols}{}
+
+\title{Untitled}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{First Slide}
+  \begin{itemize}
+    \item A point
+    \item Another point
+  \end{itemize}
+\end{frame}
+
+\end{document}
+";
+
+const LETTER_TEMPLATE: &str = r"\documentclass[11pt]{letter}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\signature{Your Name}
+\address{Your Street 1 \\ 12345 City}
+
+\begin{document}
+
+\begin{letter}{Recipient \\ Street 2 \\ 54321 Town}
+\opening{Dear Sir or Madam,}
+
+Start writing here.
+
+\closing{Yours sincerely,}
+\end{letter}
+
+\end{document}
+";
+
+/// Files written for each project template, as (relative path, content).
+fn template_files(template: &str) -> Result<Vec<(&'static str, &'static str)>, String> {
+    Ok(match template {
+        "article" => vec![("main.tex", ARTICLE_TEMPLATE)],
+        "thesis" => vec![
+            ("main.tex", THESIS_TEMPLATE),
+            ("chapters/introduction.tex", THESIS_INTRO),
+            ("references.bib", THESIS_BIB),
+        ],
+        "beamer" => vec![("main.tex", BEAMER_TEMPLATE)],
+        "letter" => vec![("main.tex", LETTER_TEMPLATE)],
+        other => return Err(format!("Unknown template: {other}")),
+    })
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -190,19 +289,99 @@ pub fn detect_main(root: &Path, files: &[FileEntry]) -> String {
         .unwrap_or_else(|| "main.tex".into())
 }
 
-pub fn create_project(parent: &Path, name: &str) -> Result<PathBuf, String> {
+pub fn create_project(parent: &Path, name: &str, template: &str) -> Result<PathBuf, String> {
     let name = name.trim();
     if name.is_empty() || name.contains(['/', '\\']) || name.starts_with('.') {
         return Err("Use a project name without slashes or a leading dot.".into());
     }
+    let files = template_files(template)?;
     let root = parent.join(name);
     if root.exists() {
         return Err(format!("A folder named “{name}” already exists in this location."));
     }
     fs::create_dir_all(&root).map_err(|e| format!("Failed to create folder: {e}"))?;
-    let template = MAIN_TEMPLATE.replace(r"\title{Untitled}", &format!(r"\title{{{name}}}"));
-    fs::write(root.join("main.tex"), template).map_err(|e| format!("Failed to write main.tex: {e}"))?;
+    for (rel, content) in files {
+        let path = root.join(rel);
+        if let Some(dir) = path.parent() {
+            fs::create_dir_all(dir).map_err(|e| format!("Failed to create folder: {e}"))?;
+        }
+        let content = content.replace(r"\title{Untitled}", &format!(r"\title{{{name}}}"));
+        fs::write(&path, content).map_err(|e| format!("Failed to write {rel}: {e}"))?;
+    }
     Ok(root)
+}
+
+/// Picks a path inside `dir` that does not exist yet, appending " 2", " 3", … to the stem.
+pub fn unique_path(dir: &Path, file_name: &str) -> PathBuf {
+    let candidate = dir.join(file_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let p = Path::new(file_name);
+    let stem = p.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = p.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    (2..)
+        .map(|n| dir.join(format!("{stem} {n}{ext}")))
+        .find(|c| !c.exists())
+        .expect("unbounded range")
+}
+
+pub fn relative(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+pub fn rename(root: &Path, from: &str, to: &str) -> Result<(), String> {
+    let src = resolve(root, from)?;
+    let dest = resolve(root, to)?;
+    if !src.exists() {
+        return Err(format!("{from} no longer exists."));
+    }
+    if dest.exists() {
+        return Err(format!("{to} already exists."));
+    }
+    if dest.starts_with(&src) {
+        return Err("A folder can't be moved into itself.".into());
+    }
+    if let Some(dir) = dest.parent() {
+        fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
+    fs::rename(&src, &dest).map_err(|e| format!("Failed to rename {from}: {e}"))
+}
+
+/// Copies outside files or folders into `dest_dir` (relative to root). Returns their new relative paths.
+pub fn import(root: &Path, sources: &[String], dest_dir: &str) -> Result<Vec<String>, String> {
+    let dir = if dest_dir.is_empty() { root.to_path_buf() } else { resolve(root, dest_dir)? };
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for source in sources {
+        let src = Path::new(source);
+        let Some(name) = src.file_name() else { continue };
+        if src.starts_with(root) {
+            out.push(relative(root, src));
+            continue;
+        }
+        let dest = unique_path(&dir, &name.to_string_lossy());
+        copy_recursive(src, &dest).map_err(|e| format!("Failed to import {}: {e}", src.display()))?;
+        out.push(relative(root, &dest));
+    }
+    Ok(out)
+}
+
+fn copy_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
+    if src.is_dir() {
+        fs::create_dir_all(dest)?;
+        for entry in fs::read_dir(src)?.flatten() {
+            copy_recursive(&entry.path(), &dest.join(entry.file_name()))?;
+        }
+        Ok(())
+    } else {
+        fs::copy(src, dest).map(|_| ())
+    }
 }
 
 #[cfg(test)]
@@ -222,7 +401,7 @@ mod tests {
     #[test]
     fn creates_project_and_lists_files() {
         let parent = tempfile::tempdir().unwrap();
-        let root = create_project(parent.path(), "thesis").unwrap();
+        let root = create_project(parent.path(), "thesis", "article").unwrap();
         fs::create_dir(root.join("chapters")).unwrap();
         fs::write(root.join("chapters/intro.tex"), "").unwrap();
         fs::write(root.join("main.aux"), "").unwrap();
@@ -233,7 +412,33 @@ mod tests {
         assert_eq!(paths, ["chapters", "chapters/intro.tex", "main.tex"]);
         assert_eq!(detect_main(&root, &files), "main.tex");
         assert!(fs::read_to_string(root.join("main.tex")).unwrap().contains(r"\title{thesis}"));
-        assert!(create_project(parent.path(), "thesis").is_err());
+        assert!(create_project(parent.path(), "thesis", "article").is_err());
+        assert!(create_project(parent.path(), "other", "nope").is_err());
+    }
+
+    #[test]
+    fn thesis_template_creates_chapters() {
+        let parent = tempfile::tempdir().unwrap();
+        let root = create_project(parent.path(), "t", "thesis").unwrap();
+        assert!(root.join("chapters/introduction.tex").is_file());
+        assert!(root.join("references.bib").is_file());
+    }
+
+    #[test]
+    fn rename_and_import() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("p");
+        fs::create_dir(&root).unwrap();
+        fs::write(root.join("a.tex"), "x").unwrap();
+        rename(&root, "a.tex", "sub/b.tex").unwrap();
+        assert!(root.join("sub/b.tex").is_file());
+        assert!(rename(&root, "sub", "sub/inner").is_err());
+
+        let outside = dir.path().join("fig.png");
+        fs::write(&outside, "png").unwrap();
+        let src = outside.to_string_lossy().into_owned();
+        assert_eq!(import(&root, &[src.clone()], "images").unwrap(), ["images/fig.png"]);
+        assert_eq!(import(&root, &[src], "images").unwrap(), ["images/fig 2.png"]);
     }
 
     #[test]

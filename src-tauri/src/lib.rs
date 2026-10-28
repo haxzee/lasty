@@ -1,11 +1,16 @@
 mod compiler;
 mod project;
+mod snapshots;
+mod spell;
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use project::{FileEntry, ProjectInfo, RecentProject, Store};
+use snapshots::Snapshot;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, State};
+use std::time::UNIX_EPOCH;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 struct StoreLock(Mutex<()>);
 
@@ -73,8 +78,9 @@ fn create_project(
     lock: State<StoreLock>,
     parent: String,
     name: String,
+    template: Option<String>,
 ) -> Result<ProjectInfo, String> {
-    let root = project::create_project(&project_root(&parent)?, &name)?;
+    let root = project::create_project(&project_root(&parent)?, &name, template.as_deref().unwrap_or("article"))?;
     load_project(&app, &lock, &root)
 }
 
@@ -128,6 +134,99 @@ fn create_file(root: String, file: String) -> Result<(), String> {
     fs::write(&path, "").map_err(|e| format!("Failed to create {file}: {e}"))
 }
 
+#[tauri::command]
+fn create_folder(root: String, path: String) -> Result<(), String> {
+    let dir = project::resolve(&project_root(&root)?, &path)?;
+    if dir.exists() {
+        return Err(format!("{path} already exists."));
+    }
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create {path}: {e}"))
+}
+
+#[tauri::command]
+fn rename_path(root: String, from: String, to: String) -> Result<(), String> {
+    project::rename(&project_root(&root)?, &from, &to)
+}
+
+#[tauri::command]
+fn delete_path(root: String, path: String) -> Result<(), String> {
+    let target = project::resolve(&project_root(&root)?, &path)?;
+    if trash::delete(&target).is_ok() {
+        return Ok(());
+    }
+    let result = if target.is_dir() { fs::remove_dir_all(&target) } else { fs::remove_file(&target) };
+    result.map_err(|e| format!("Failed to delete {path}: {e}"))
+}
+
+#[tauri::command]
+fn import_files(root: String, sources: Vec<String>, dest_dir: String) -> Result<Vec<String>, String> {
+    project::import(&project_root(&root)?, &sources, &dest_dir)
+}
+
+/// Last modification time in milliseconds, used to notice edits made outside Lasty.
+#[tauri::command]
+fn file_modified(root: String, file: String) -> Result<u64, String> {
+    let path = project::resolve(&project_root(&root)?, &file)?;
+    let modified = fs::metadata(&path).and_then(|m| m.modified()).map_err(|e| e.to_string())?;
+    Ok(modified.duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0))
+}
+
+#[tauri::command]
+fn export_pdf(dest: String, pdf: String) -> Result<(), String> {
+    let bytes = STANDARD.decode(pdf).map_err(|e| e.to_string())?;
+    fs::write(&dest, bytes).map_err(|e| format!("Failed to save PDF: {e}"))
+}
+
+#[tauri::command]
+fn list_snapshots(root: String) -> Result<Vec<Snapshot>, String> {
+    Ok(snapshots::list(&project_root(&root)?))
+}
+
+#[tauri::command]
+fn create_snapshot(root: String, label: String, auto: bool) -> Result<Snapshot, String> {
+    snapshots::create(&project_root(&root)?, &label, auto)
+}
+
+#[tauri::command]
+fn restore_snapshot(root: String, id: String) -> Result<(), String> {
+    snapshots::restore(&project_root(&root)?, &id)
+}
+
+#[tauri::command]
+fn delete_snapshot(root: String, id: String) -> Result<(), String> {
+    snapshots::delete(&project_root(&root)?, &id)
+}
+
+#[tauri::command]
+fn read_snapshot_file(root: String, id: String, file: String) -> Result<String, String> {
+    snapshots::read_file(&project_root(&root)?, &id, &file)
+}
+
+fn dictionaries_dir(app: &AppHandle) -> PathBuf {
+    let bundled = app.path().resource_dir().map(|d| d.join("dictionaries")).unwrap_or_default();
+    if bundled.is_dir() {
+        bundled
+    } else {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("dictionaries")
+    }
+}
+
+#[tauri::command]
+async fn spell_check(app: AppHandle, lang: String, words: Vec<String>) -> Result<Vec<String>, String> {
+    let dir = dictionaries_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || app.state::<spell::Spell>().check(&dir, &lang, words))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn spell_suggest(app: AppHandle, lang: String, word: String) -> Result<Vec<String>, String> {
+    let dir = dictionaries_dir(&app);
+    tauri::async_runtime::spawn_blocking(move || app.state::<spell::Spell>().suggest(&dir, &lang, &word))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 fn settings_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_config_dir()
@@ -172,7 +271,11 @@ fn bundled_tectonic() -> Option<PathBuf> {
 }
 
 #[tauri::command]
-async fn compile_project(root: String, main_file: String, engine: Option<String>) -> Result<String, String> {
+async fn compile_project(
+    root: String,
+    main_file: String,
+    engine: Option<String>,
+) -> Result<compiler::CompileOutput, String> {
     let root_path = project_root(&root)?;
     project::resolve(&root_path, &main_file)?;
     let engine = engine.unwrap_or_else(|| "auto".into());
@@ -181,12 +284,69 @@ async fn compile_project(root: String, main_file: String, engine: Option<String>
         .map_err(|e| format!("Compile task panicked: {e}"))?
 }
 
+/// macOS menu without "Close Window", so ⌘W closes the current tab instead.
+#[cfg(target_os = "macos")]
+fn app_menu(app: &AppHandle) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem as P, Submenu};
+    let close_tab = MenuItem::with_id(app, "close-tab", "Close Tab", true, Some("CmdOrCtrl+W"))?;
+    Menu::with_items(
+        app,
+        &[
+            &Submenu::with_items(
+                app,
+                "Lasty",
+                true,
+                &[
+                    &P::about(app, None, None)?,
+                    &P::separator(app)?,
+                    &P::services(app, None)?,
+                    &P::separator(app)?,
+                    &P::hide(app, None)?,
+                    &P::hide_others(app, None)?,
+                    &P::show_all(app, None)?,
+                    &P::separator(app)?,
+                    &P::quit(app, None)?,
+                ],
+            )?,
+            &Submenu::with_items(app, "File", true, &[&close_tab])?,
+            &Submenu::with_items(
+                app,
+                "Edit",
+                true,
+                &[
+                    &P::undo(app, None)?,
+                    &P::redo(app, None)?,
+                    &P::separator(app)?,
+                    &P::cut(app, None)?,
+                    &P::copy(app, None)?,
+                    &P::paste(app, None)?,
+                    &P::select_all(app, None)?,
+                ],
+            )?,
+            &Submenu::with_items(
+                app,
+                "Window",
+                true,
+                &[&P::minimize(app, None)?, &P::maximize(app, None)?, &P::separator(app)?, &P::fullscreen(app, None)?],
+            )?,
+        ],
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(target_os = "macos")]
+    let builder = builder
+        .menu(app_menu)
+        .on_menu_event(|app, event| {
+            let _ = app.emit("menu", event.id().as_ref());
+        });
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(StoreLock(Mutex::new(())))
+        .manage(spell::Spell::default())
         .invoke_handler(tauri::generate_handler![
             get_recent_projects,
             get_last_project,
@@ -199,6 +359,19 @@ pub fn run() {
             read_file,
             write_file,
             create_file,
+            create_folder,
+            rename_path,
+            delete_path,
+            import_files,
+            file_modified,
+            export_pdf,
+            list_snapshots,
+            create_snapshot,
+            restore_snapshot,
+            delete_snapshot,
+            read_snapshot_file,
+            spell_check,
+            spell_suggest,
             compile_project,
             get_settings,
             save_settings,

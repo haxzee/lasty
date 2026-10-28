@@ -2,6 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use std::env;
 use std::ffi::OsString;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -47,6 +48,7 @@ fn run_tex(bin: &Path, root: &Path, main: &str, out: &Path, path: &OsString) -> 
         .arg("-halt-on-error")
         .arg("-no-shell-escape")
         .arg("-file-line-error")
+        .arg("-synctex=-1")
         .arg(format!("-output-directory={}", out.display()))
         .arg(main)
         .output()
@@ -56,7 +58,7 @@ fn run_tectonic(bin: &Path, root: &Path, main: &str, out: &Path, path: &OsString
     command(bin)
         .current_dir(root)
         .env("PATH", path)
-        .args(["--chatter", "minimal", "--outdir"])
+        .args(["--chatter", "minimal", "--synctex", "--outdir"])
         .arg(out)
         .arg(main)
         .output()
@@ -89,7 +91,25 @@ fn find_tectonic(path: &OsString, bundled: Option<&Path>) -> Option<PathBuf> {
     find_executable("tectonic", path).or_else(|| bundled.filter(|b| b.is_file()).map(Path::to_path_buf))
 }
 
-pub fn compile(root: &Path, main: &str, engine: &str, bundled_tectonic: Option<&Path>) -> Result<String, String> {
+#[derive(serde::Serialize)]
+pub struct CompileOutput {
+    /// Base64-encoded PDF.
+    pub pdf: String,
+    /// Uncompressed SyncTeX data, when the engine produced it.
+    pub synctex: Option<String>,
+}
+
+fn read_synctex(pdf_path: &Path) -> Option<String> {
+    if let Ok(text) = fs::read_to_string(pdf_path.with_extension("synctex")) {
+        return Some(text);
+    }
+    let gz = fs::File::open(pdf_path.with_extension("synctex.gz")).ok()?;
+    let mut text = String::new();
+    flate2::read::GzDecoder::new(gz).read_to_string(&mut text).ok()?;
+    Some(text)
+}
+
+pub fn compile(root: &Path, main: &str, engine: &str, bundled_tectonic: Option<&Path>) -> Result<CompileOutput, String> {
     let out = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
     let pdf_name = Path::new(main).with_extension("pdf");
     let pdf_path = out.path().join(pdf_name.file_name().unwrap_or_default());
@@ -119,7 +139,7 @@ pub fn compile(root: &Path, main: &str, engine: &str, bundled_tectonic: Option<&
 
     if output.status.success() && pdf_path.is_file() {
         let pdf = fs::read(&pdf_path).map_err(|e| format!("Failed to read PDF: {e}"))?;
-        return Ok(STANDARD.encode(pdf));
+        return Ok(CompileOutput { pdf: STANDARD.encode(pdf), synctex: read_synctex(&pdf_path) });
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -137,7 +157,7 @@ pub fn compile(root: &Path, main: &str, engine: &str, bundled_tectonic: Option<&
 mod tests {
     use super::*;
 
-    fn compile_source(src: &str) -> Result<String, String> {
+    fn compile_source(src: &str) -> Result<CompileOutput, String> {
         let dir = tempfile::tempdir().unwrap();
         fs::write(dir.path().join("main.tex"), src).unwrap();
         let result = compile(dir.path(), "main.tex", "auto", None);
@@ -147,23 +167,25 @@ mod tests {
 
     #[test]
     fn compiles_minimal_document() {
-        let b64 = compile_source(r"\documentclass{article}\begin{document}Hello\end{document}")
+        let out = compile_source(r"\documentclass{article}\begin{document}Hello\end{document}")
             .expect("should compile");
-        let pdf = STANDARD.decode(b64).unwrap();
+        let pdf = STANDARD.decode(out.pdf).unwrap();
         assert!(pdf.starts_with(b"%PDF"));
+        assert!(out.synctex.is_some_and(|s| s.contains("Input:")));
     }
 
     #[test]
     fn reports_errors() {
-        let err = compile_source(r"\documentclass{article}\begin{document}\undefinedcmd\end{document}")
-            .unwrap_err();
+        let Err(err) = compile_source(r"\documentclass{article}\begin{document}\undefinedcmd\end{document}") else {
+            panic!("should fail");
+        };
         assert!(err.contains("Undefined control sequence"), "{err}");
     }
 
     #[test]
     fn rejects_unknown_engine() {
         let dir = tempfile::tempdir().unwrap();
-        let err = compile(dir.path(), "main.tex", "word", None).unwrap_err();
+        let Err(err) = compile(dir.path(), "main.tex", "word", None) else { panic!("should fail") };
         assert!(err.contains("Unknown compiler"), "{err}");
     }
 

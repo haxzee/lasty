@@ -45,7 +45,8 @@
     ],
     "resources": {
       "../LICENSE": "LICENSE",
-      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md",
+      "dictionaries/": "dictionaries/"
     },
     "copyright": "Copyright (c) 2026 stoegerer_simon. MIT License.",
     "license": "MIT"

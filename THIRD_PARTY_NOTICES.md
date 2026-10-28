@@ -38,6 +38,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Spelling dictionaries
+
+The Hunspell dictionaries for spell checking are shipped unmodified as separate data files in the `dictionaries` folder, each next to its license file.
+
+- English (`en.aff`, `en.dic`): from the `dictionary-en` package (https://github.com/wooorm/dictionaries), derived from SCOWL. Licensed under MIT and BSD terms, see `en.LICENSE`.
+- German (`de.aff`, `de.dic`): from the `dictionary-de` package, derived from igerman98 by Björn Jacke. Licensed under GPL-2.0 or GPL-3.0, see `de.LICENSE`. The source is available at https://www.j3e.de/ispell/igerman98/.
+
+## PDF.js
+
+The PDF preview uses PDF.js (https://mozilla.github.io/pdf.js/), Copyright Mozilla Foundation, licensed under the Apache License 2.0.
+
 ## Other components
 
 Lasty's frontend is built with open-source libraries including React, Monaco Editor, Tailwind CSS and the Geist font, and its backend with Tauri and the Rust crates listed in `src-tauri/Cargo.lock`. Their licenses are available in their respective packages.
