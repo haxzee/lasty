@@ -66,14 +66,14 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-[22px] w-[38px] shrink-0 cursor-default rounded-full transition-colors duration-200 ${
-        checked ? "bg-accent" : "bg-separator"
+      className={`relative block h-[22px] w-[38px] shrink-0 cursor-default rounded-full p-0 transition-colors duration-200 ${
+        checked ? "bg-accent" : "bg-separator dark:bg-hover"
       }`}
     >
       <span
-        className={`absolute top-[2px] size-[18px] rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.3)] transition-transform duration-200 ease-[cubic-bezier(.3,1.3,.5,1)] ${
-          checked ? "translate-x-[18px]" : "translate-x-[2px]"
-        } ${checked ? "dark:bg-[#1d1d1f]" : ""}`}
+        className={`absolute left-0 top-[2px] block size-[18px] rounded-full shadow-[0_1px_3px_rgb(0_0_0/0.3)] transition-[translate,background-color] duration-200 ease-[cubic-bezier(.3,1.3,.5,1)] ${
+          checked ? "translate-x-[18px] bg-on-accent" : "translate-x-[2px] bg-white"
+        }`}
       />
     </button>
   );
