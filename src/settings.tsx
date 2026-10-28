@@ -30,6 +30,7 @@ export interface Settings {
   userWords: string[];
   pdfDarkMode: boolean;
   autoSnapshots: boolean;
+  setupDone: boolean;
 }
 
 export const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace';
@@ -58,6 +59,7 @@ export const DEFAULT_SETTINGS: Settings = {
   userWords: [],
   pdfDarkMode: false,
   autoSnapshots: true,
+  setupDone: false,
 };
 
 function legacyValues(): Partial<Settings> {
@@ -108,8 +110,10 @@ export function SettingsProvider({ children }: { children: (loaded: boolean) => 
   );
 
   const reset = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
-    persist(DEFAULT_SETTINGS);
+    // Resetting options shouldn't send people through the first-launch setup again.
+    const next = { ...DEFAULT_SETTINGS, setupDone: true };
+    setSettings(next);
+    persist(next);
   }, [persist]);
 
   return <SettingsContext.Provider value={{ settings, update, reset }}>{children(loaded)}</SettingsContext.Provider>;

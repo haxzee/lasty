@@ -87,6 +87,20 @@ fn summarize_log(log: &str) -> String {
 
 const TEX_ENGINES: &[&str] = &["pdflatex", "xelatex", "lualatex"];
 
+/// The compilers that can run on this machine, in the order Settings lists them.
+pub fn available_engines(bundled_tectonic: Option<&Path>) -> Vec<String> {
+    let path = search_path();
+    let mut out: Vec<String> = TEX_ENGINES
+        .iter()
+        .filter(|e| find_executable(e, &path).is_some())
+        .map(|e| e.to_string())
+        .collect();
+    if find_tectonic(&path, bundled_tectonic).is_some() {
+        out.push("tectonic".into());
+    }
+    out
+}
+
 fn find_tectonic(path: &OsString, bundled: Option<&Path>) -> Option<PathBuf> {
     find_executable("tectonic", path).or_else(|| bundled.filter(|b| b.is_file()).map(Path::to_path_buf))
 }

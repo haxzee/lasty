@@ -71,7 +71,7 @@ const ENGINES: { value: Engine; label: string }[] = [
   { value: "tectonic", label: "Tectonic (built in)" },
 ];
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button
       role="switch"
@@ -91,7 +91,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   );
 }
 
-function Segmented<T extends string | number>({
+export function Segmented<T extends string | number>({
   value,
   options,
   onChange,
@@ -138,7 +138,7 @@ function Select<T extends string>({ value, options, onChange }: { value: T; opti
   );
 }
 
-function Stepper({ value, min, max, step = 1, unit, onChange }: { value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void }) {
+export function Stepper({ value, min, max, step = 1, unit, onChange }: { value: number; min: number; max: number; step?: number; unit: string; onChange: (v: number) => void }) {
   const set = (v: number) => onChange(Math.min(max, Math.max(min, v)));
   return (
     <div className="flex h-7 shrink-0 items-center rounded-full bg-hover">

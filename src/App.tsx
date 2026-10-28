@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { api, type ProjectInfo } from "./api";
 import SettingsDialog from "./components/SettingsDialog";
+import Setup from "./components/Setup";
 import UpdateButton from "./components/UpdateButton";
 import Welcome from "./components/Welcome";
 import Workspace from "./components/Workspace";
 import { isMac } from "./components/ui";
 import { SettingsProvider, useSettings } from "./settings";
+import { applyThemeClasses } from "./theme";
 
 if (isMac) document.documentElement.classList.add("native-glass");
 
@@ -18,9 +20,7 @@ function Shell() {
   const { theme } = settings;
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", theme !== "light");
-    root.classList.toggle("oled", theme === "oled");
+    applyThemeClasses(theme);
     getCurrentWindow().setTheme(theme === "light" ? "light" : "dark").catch(() => {});
   }, [theme]);
 
@@ -56,6 +56,7 @@ function Shell() {
   }
 
   if (booting) return null;
+  if (!settings.setupDone) return <Setup />;
 
   const openSettings = () => setSettingsOpen(true);
 

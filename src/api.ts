@@ -69,6 +69,7 @@ export const api = {
   spellSuggest: (lang: string, word: string) => invoke<string[]>("spell_suggest", { lang, word }),
   compile: (root: string, mainFile: string, engine: string) =>
     invoke<CompileOutput>("compile_project", { root, mainFile, engine }),
+  availableEngines: () => invoke<string[]>("available_engines"),
   getSettings: () => invoke<Record<string, unknown> | null>("get_settings"),
   saveSettings: (settings: object) => invoke<void>("save_settings", { settings }),
   platform: () => invoke<{ os: string; arch: string }>("platform"),

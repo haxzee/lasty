@@ -203,6 +203,44 @@ html.oled .monaco-editor .monaco-hover {
 html.no-typing-animation .monaco-editor .typed-fade { animation: none; }
 
 @keyframes fade-in { from { opacity: 0; } }
+@keyframes logo-in { from { opacity: 0; transform: scale(0.82); } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } }
+@keyframes step-next { from { opacity: 0; transform: translateX(56px); filter: blur(6px); } }
+@keyframes step-back { from { opacity: 0; transform: translateX(-56px); filter: blur(6px); } }
+@keyframes leave-next { to { opacity: 0; transform: translateX(-40px); filter: blur(6px); } }
+@keyframes leave-back { to { opacity: 0; transform: translateX(40px); filter: blur(6px); } }
+@keyframes fade-out-up { to { opacity: 0; transform: scale(1.03); filter: blur(8px); } }
+@keyframes draw { from { stroke-dashoffset: 1; } }
+@keyframes pop { 0% { opacity: 0; transform: scale(0.4); } 60% { opacity: 1; transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes burst { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); } }
+@keyframes shine { from { transform: translateX(-220%) skewX(-18deg); } to { transform: translateX(420%) skewX(-18deg); } }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes breathe { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.06); } }
+
+/* Children enter one after another. */
+.stagger > * { animation: rise-in 650ms cubic-bezier(.2, .8, .2, 1) both; }
+.stagger > *:nth-child(1) { animation-delay: 40ms; }
+.stagger > *:nth-child(2) { animation-delay: 110ms; }
+.stagger > *:nth-child(3) { animation-delay: 180ms; }
+.stagger > *:nth-child(4) { animation-delay: 250ms; }
+.stagger > *:nth-child(5) { animation-delay: 320ms; }
+.stagger > *:nth-child(6) { animation-delay: 390ms; }
+.stagger > *:nth-child(7) { animation-delay: 460ms; }
+.stagger > *:nth-child(n + 8) { animation-delay: 530ms; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--hover) 25%, var(--selected) 50%, var(--hover) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* Theme switches grow as a circle from where you clicked. */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: theme-reveal 620ms cubic-bezier(.3, .8, .2, 1); }
+@keyframes theme-reveal {
+  from { clip-path: circle(0 at var(--vt-x, 50%) var(--vt-y, 50%)); }
+  to { clip-path: circle(150vmax at var(--vt-x, 50%) var(--vt-y, 50%)); }
+}
 @keyframes sync-flash { 0%, 50% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes line-flash { from { background: rgb(255 216 77 / 0.35); } }
 .monaco-editor .line-flash { animation: line-flash 1.2s ease-out; }
@@ -213,5 +251,11 @@ html.no-typing-animation .monaco-editor .typed-fade { animation: none; }
   .monaco-editor .suggest-widget.visible,
   .monaco-editor .monaco-hover:not(.hidden),
   .monaco-editor .find-widget.visible,
-  [role="dialog"] { animation: none !important; }
+  [role="dialog"],
+  [style*="step-next"],
+  [style*="step-back"],
+  [style*="leave-"],
+  .stagger > *,
+  .motion { animation: none !important; }
+  .motion-hide { display: none; }
 }

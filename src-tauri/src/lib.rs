@@ -271,6 +271,13 @@ fn bundled_tectonic() -> Option<PathBuf> {
 }
 
 #[tauri::command]
+async fn available_engines() -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(|| compiler::available_engines(bundled_tectonic().as_deref()))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
 async fn compile_project(
     root: String,
     main_file: String,
@@ -373,6 +380,7 @@ pub fn run() {
             spell_check,
             spell_suggest,
             compile_project,
+            available_engines,
             get_settings,
             save_settings,
             platform,
