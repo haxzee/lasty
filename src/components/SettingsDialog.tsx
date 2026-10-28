@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { DEFAULT_FONT_FAMILY, useSettings, type EditorColors, type Engine } from "../settings";
-import { Button, Icon, IconButton, type Theme } from "./ui";
+import { DEFAULT_FONT_FAMILY, useSettings, type EditorColors, type Engine, type SpellLanguage } from "../settings";
+import { Button, Icon, IconButton, isMac, type Theme } from "./ui";
 
 type Section = "general" | "appearance" | "editor" | "compiler";
 
@@ -49,6 +49,18 @@ const FONTS = [
   { label: "Consolas", value: 'Consolas, "Courier New", monospace' },
   { label: "Cascadia Code", value: '"Cascadia Code", Consolas, monospace' },
   { label: "Courier New", value: '"Courier New", monospace' },
+];
+
+const mod = isMac ? "⌘" : "Ctrl+";
+const SHORTCUTS: [string, string][] = [
+  [`${mod}S`, "Save and compile"],
+  [`${mod}P`, "Go to file"],
+  [`${mod}W`, "Close tab"],
+  [`${isMac ? "⌘⇧" : "Ctrl+Shift+"}F`, "Search in project"],
+  [`${mod}B / ${mod}I`, "Bold / italic"],
+  [`${isMac ? "⌘-click" : "Ctrl+click"}`, "Jump between source and PDF"],
+  [`${mod}+ / ${mod}−`, "Editor font size"],
+  [`${mod},`, "Settings"],
 ];
 
 const ENGINES: { value: Engine; label: string }[] = [
@@ -224,6 +236,18 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
                     <Toggle label="Check for updates" checked={s.checkForUpdates} onChange={(v) => update({ checkForUpdates: v })} />
                   </Row>
                 </Group>
+                <Group title="Version history">
+                  <Row label="Automatic snapshots" hint="Saves a copy of your text files at most every 10 minutes while you work. Restore them from the clock button in the toolbar.">
+                    <Toggle label="Automatic snapshots" checked={s.autoSnapshots} onChange={(v) => update({ autoSnapshots: v })} />
+                  </Row>
+                </Group>
+                <Group title="Keyboard shortcuts">
+                  {SHORTCUTS.map(([keys, label]) => (
+                    <Row key={label} label={label}>
+                      <kbd className="rounded-md bg-hover px-2 py-0.5 font-sans text-xs font-medium text-muted">{keys}</kbd>
+                    </Row>
+                  ))}
+                </Group>
                 <Group>
                   <Row label="Reset all settings" hint="Restores every option on this page to its default.">
                     <Button onClick={reset}>Reset</Button>
@@ -255,6 +279,11 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
                         { value: "graphite", label: "Graphite" },
                       ]}
                     />
+                  </Row>
+                </Group>
+                <Group title="PDF">
+                  <Row label="Dark pages" hint="Inverts the preview to match a dark theme. The exported PDF is not changed.">
+                    <Toggle label="Dark pages" checked={s.pdfDarkMode} onChange={(v) => update({ pdfDarkMode: v })} />
                   </Row>
                 </Group>
                 <Group title="Motion">
@@ -319,6 +348,27 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
                   </Row>
                   <Row label="Close environments" hint="Adds \end{…} when you press Enter after \begin{…}.">
                     <Toggle label="Close environments" checked={s.autoCloseEnvironments} onChange={(v) => update({ autoCloseEnvironments: v })} />
+                  </Row>
+                </Group>
+                <Group title="Spelling">
+                  <Row label="Check spelling" hint="Underlines misspelled words in your text. Commands, math and labels are skipped. Fix them with ⌘. or the hover menu.">
+                    <Select<SpellLanguage>
+                      value={s.spellCheck}
+                      onChange={(spellCheck) => update({ spellCheck })}
+                      options={[
+                        { value: "off", label: "Off" },
+                        { value: "en", label: "English" },
+                        { value: "de", label: "Deutsch" },
+                      ]}
+                    />
+                  </Row>
+                  <Row
+                    label="Your dictionary"
+                    hint={s.userWords.length ? s.userWords.slice(0, 12).join(", ") + (s.userWords.length > 12 ? " …" : "") : "Words you add from a spelling suggestion appear here."}
+                  >
+                    <Button disabled={!s.userWords.length} onClick={() => update({ userWords: [] })}>
+                      Clear
+                    </Button>
                   </Row>
                 </Group>
               </>

@@ -4,6 +4,7 @@ import type { Theme } from "./components/ui";
 
 export type EditorColors = "color" | "graphite";
 export type Engine = "auto" | "pdflatex" | "xelatex" | "lualatex" | "tectonic";
+export type SpellLanguage = "off" | "en" | "de";
 
 export interface Settings {
   reopenLastProject: boolean;
@@ -25,6 +26,10 @@ export interface Settings {
   engine: Engine;
   autoCompile: boolean;
   compileDelay: number;
+  spellCheck: SpellLanguage;
+  userWords: string[];
+  pdfDarkMode: boolean;
+  autoSnapshots: boolean;
 }
 
 export const DEFAULT_FONT_FAMILY = 'Menlo, Monaco, "Courier New", monospace';
@@ -49,6 +54,10 @@ export const DEFAULT_SETTINGS: Settings = {
   engine: "auto",
   autoCompile: true,
   compileDelay: 300,
+  spellCheck: navigator.language.startsWith("de") ? "de" : "en",
+  userWords: [],
+  pdfDarkMode: false,
+  autoSnapshots: true,
 };
 
 function legacyValues(): Partial<Settings> {

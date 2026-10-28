@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Button, Icon, IconButton, isMac } from "./ui";
 
 export type Status = "ready" | "compiling" | "success" | "error";
@@ -15,9 +16,32 @@ interface ToolbarProps {
   saved: boolean;
   status: Status;
   onOpenSettings: () => void;
+  onOpenHistory: () => void;
   onCompile: () => void;
   onSelectFile: (file: string) => void;
   onCloseFile: (file: string) => void;
+  onReorder: (files: string[]) => void;
+}
+
+interface Drag {
+  file: string;
+  from: number;
+  startX: number;
+  dx: number;
+  moved: boolean;
+  /** Tab centers at drag start, relative to the pointer's starting x. */
+  centers: number[];
+  width: number;
+}
+
+function targetIndex(d: Drag) {
+  const center = d.centers[d.from] + d.dx;
+  let to = d.from;
+  d.centers.forEach((c, i) => {
+    if (i < d.from && center < c) to = Math.min(to, i);
+    if (i > d.from && center > c) to = Math.max(to, i);
+  });
+  return to;
 }
 
 export default function Toolbar({
@@ -26,11 +50,52 @@ export default function Toolbar({
   saved,
   status,
   onOpenSettings,
+  onOpenHistory,
   onCompile,
   onSelectFile,
   onCloseFile,
+  onReorder,
 }: ToolbarProps) {
   const s = STATUS[status];
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
+  const suppressClick = useRef(false);
+
+  function onPointerDown(e: React.PointerEvent, file: string, index: number) {
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
+    const centers = openFiles.map((f) => {
+      const r = tabRefs.current.get(f)!.getBoundingClientRect();
+      return r.left + r.width / 2;
+    });
+    const width = tabRefs.current.get(file)!.getBoundingClientRect().width;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ file, from: index, startX: e.clientX, dx: 0, moved: false, centers, width });
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    if (!drag.moved && Math.abs(dx) < 4) return;
+    setDrag({ ...drag, dx, moved: true });
+  }
+
+  function onPointerUp() {
+    if (!drag) return;
+    if (drag.moved) {
+      suppressClick.current = true;
+      const to = targetIndex(drag);
+      if (to !== drag.from) {
+        const next = [...openFiles];
+        next.splice(to, 0, ...next.splice(drag.from, 1));
+        onReorder(next);
+      }
+    }
+    setDrag(null);
+  }
+
+  const to = drag?.moved ? targetIndex(drag) : -1;
+  const gap = (drag?.width ?? 0) + 2;
+
   return (
     <header
       data-tauri-drag-region
@@ -41,19 +106,37 @@ export default function Toolbar({
           role="tablist"
           className="glass flex h-8 min-w-0 items-center gap-0.5 overflow-x-auto rounded-full p-0.5 [scrollbar-width:none]"
         >
-          {openFiles.map((file) => {
+          {openFiles.map((file, i) => {
             const active = file === activeFile;
+            const dragging = drag?.moved && drag.file === file;
+            let shift = 0;
+            if (drag?.moved && !dragging) {
+              if (i > drag.from && i <= to) shift = -gap;
+              if (i < drag.from && i >= to) shift = gap;
+            }
             return (
               <div
                 key={file}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(file, el);
+                  else tabRefs.current.delete(file);
+                }}
                 role="tab"
                 aria-selected={active}
                 title={file}
-                onClick={() => onSelectFile(file)}
+                onPointerDown={(e) => onPointerDown(e, file, i)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={() => setDrag(null)}
+                onClick={() => {
+                  if (suppressClick.current) return void (suppressClick.current = false);
+                  onSelectFile(file);
+                }}
                 onAuxClick={(e) => e.button === 1 && onCloseFile(file)}
-                className={`group flex h-7 shrink-0 cursor-default items-center gap-1.5 rounded-full pl-3 pr-1 transition-colors duration-150 ${
-                  active ? "bg-control text-fg shadow-[0_0.5px_2px_rgb(0_0_0/0.2)]" : "text-muted hover:bg-hover hover:text-fg"
-                }`}
+                style={{ transform: `translateX(${dragging ? drag.dx : shift}px)` }}
+                className={`group relative flex h-7 shrink-0 cursor-default items-center gap-1.5 rounded-full pl-3 pr-1 ${
+                  dragging ? "z-10 shadow-[0_2px_8px_rgb(0_0_0/0.18)]" : "transition-[transform,background-color,color] duration-200 ease-[cubic-bezier(.2,.8,.2,1)]"
+                } ${active || dragging ? "bg-control text-fg shadow-[0_0.5px_2px_rgb(0_0_0/0.2)]" : "text-muted hover:bg-hover hover:text-fg"}`}
               >
                 <span className="max-w-40 truncate font-medium">{file.split("/").pop()}</span>
                 <button
@@ -61,13 +144,11 @@ export default function Toolbar({
                     e.stopPropagation();
                     onCloseFile(file);
                   }}
-                  title="Close"
+                  title={`Close (${isMac ? "⌘W" : "Ctrl+W"})`}
                   aria-label={`Close ${file}`}
                   className="grid size-5 cursor-default place-items-center rounded-full hover:bg-hover"
                 >
-                  {active && !saved ? (
-                    <span className="size-1.5 rounded-full bg-current group-hover:hidden" />
-                  ) : null}
+                  {active && !saved ? <span className="size-1.5 rounded-full bg-current group-hover:hidden" /> : null}
                   <Icon className={`size-3 ${active && !saved ? "hidden group-hover:block" : active ? "" : "opacity-0 group-hover:opacity-100"}`}>
                     <path d="M6 6l12 12M18 6L6 18" />
                   </Icon>
@@ -86,6 +167,12 @@ export default function Toolbar({
         <span className={`size-2 rounded-full ${s.dot}`} />
         {s.label}
       </div>
+      <IconButton onClick={onOpenHistory} title="Version History">
+        <Icon className="size-4">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+          <path d="M3 3v5h5M12 7v5l3 2" />
+        </Icon>
+      </IconButton>
       <IconButton onClick={onOpenSettings} title={`Settings (${isMac ? "⌘," : "Ctrl+,"})`}>
         <Icon className="size-4">
           <circle cx="12" cy="12" r="3" />

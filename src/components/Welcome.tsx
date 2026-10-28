@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { documentDir, join } from "@tauri-apps/api/path";
 import { getVersion } from "@tauri-apps/api/app";
-import { api, type ProjectInfo, type RecentProject } from "../api";
+import { api, type ProjectInfo, type RecentProject, type Template } from "../api";
 import { Button, Icon, IconButton, isMac } from "./ui";
 import { AppIcon } from "./AppIcon";
 
@@ -10,6 +10,13 @@ interface WelcomeProps {
   onOpen: (project: ProjectInfo) => void;
   onOpenSettings: () => void;
 }
+
+const TEMPLATES: { id: Template; label: string; detail: string }[] = [
+  { id: "article", label: "Article", detail: "A single main.tex" },
+  { id: "thesis", label: "Thesis", detail: "Chapters folder and bibliography" },
+  { id: "beamer", label: "Slides", detail: "Beamer presentation" },
+  { id: "letter", label: "Letter", detail: "Formal letter" },
+];
 
 function timeAgo(seconds: number) {
   const diff = Date.now() / 1000 - seconds;
@@ -43,6 +50,7 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [targetPath, setTargetPath] = useState("");
+  const [template, setTemplate] = useState<Template>("article");
 
   useEffect(() => {
     api.recentProjects().then(setRecent).catch((e) => setError(String(e)));
@@ -78,7 +86,7 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
     e.preventDefault();
     setError(null);
     try {
-      onOpen(await api.createProject(location, name));
+      onOpen(await api.createProject(location, name, template));
     } catch (err) {
       setError(String(err));
     }
@@ -123,6 +131,26 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
                   />
                 </label>
                 <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted">Template</span>
+                  <div role="radiogroup" className="grid grid-cols-2 gap-1.5">
+                    {TEMPLATES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={template === t.id}
+                        onClick={() => setTemplate(t.id)}
+                        className={`cursor-default rounded-[12px] px-3 py-2 text-left transition-colors ${
+                          template === t.id ? "bg-accent text-on-accent" : "bg-hover hover:bg-selected"
+                        }`}
+                      >
+                        <span className="block text-[13px] font-medium">{t.label}</span>
+                        <span className={`block text-[11px] ${template === t.id ? "opacity-75" : "text-muted"}`}>{t.detail}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
                   <span className="text-xs font-medium text-muted">Location</span>
                   <div className="flex items-center gap-2">
                     <span className="min-w-0 flex-1 truncate text-xs text-muted" title={location}>
@@ -135,8 +163,8 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
                 </div>
                 {targetPath && (
                   <p className="text-xs text-muted">
-                    Creates <span className="font-mono text-fg">{targetPath}</span> with a starter{" "}
-                    <span className="font-mono text-fg">main.tex</span>.
+                    Creates <span className="font-mono text-fg">{targetPath}</span> from the{" "}
+                    {TEMPLATES.find((t) => t.id === template)!.label.toLowerCase()} template.
                   </p>
                 )}
                 <div className="flex justify-end gap-2 pt-2">
