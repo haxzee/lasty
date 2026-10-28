@@ -577,7 +577,7 @@ export default function Workspace({ project, theme, onOpenSettings, onClose }: W
 
   return (
     <div className="flex h-full">
-      <aside className="flex w-60 shrink-0 flex-col max-md:hidden">
+      <aside className="flex w-60 shrink-0 flex-col animate-[step-back_500ms_cubic-bezier(.2,.8,.2,1)_both] max-md:hidden">
         <div data-tauri-drag-region className="h-[52px] shrink-0" />
         <div className="flex items-center gap-1 pb-3 pl-5 pr-2">
           <div className="min-w-0 flex-1" title={root}>
@@ -643,6 +643,7 @@ export default function Workspace({ project, theme, onOpenSettings, onClose }: W
         <div className="grid min-h-0 flex-1" style={{ gridTemplateColumns: `${split}fr 8px ${100 - split}fr` }}>
           <section
             ref={editorSection}
+            style={{ animation: "rise-in 550ms 80ms cubic-bezier(.2,.8,.2,1) both" }}
             className={`relative flex min-w-0 flex-col overflow-hidden rounded-[14px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)] transition-shadow ${
               dropActive ? "shadow-[0_0_0_2px_var(--accent)]" : ""
             }`}
@@ -702,7 +703,7 @@ export default function Workspace({ project, theme, onOpenSettings, onClose }: W
           >
             <div className="h-8 w-[3px] rounded-full bg-faint opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-          <section className="min-w-0 overflow-hidden rounded-[14px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)]">
+          <section style={{ animation: "rise-in 550ms 160ms cubic-bezier(.2,.8,.2,1) both" }} className="min-w-0 overflow-hidden rounded-[14px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)]">
             <Preview
               pdfBase64={pdf}
               synctex={synctex}

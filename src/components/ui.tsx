@@ -17,7 +17,7 @@ export function Button({
   return (
     <button
       className={`inline-flex h-8 cursor-default items-center justify-center gap-1.5 rounded-full px-4 text-[13px] font-medium
-        transition-[filter,background-color] disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+        transition-[filter,background-color,transform] duration-150 active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100 ${VARIANTS[variant]} ${className}`}
       {...props}
     />
   );

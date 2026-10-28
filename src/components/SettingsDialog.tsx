@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { DEFAULT_FONT_FAMILY, useSettings, type EditorColors, type Engine, type SpellLanguage } from "../settings";
+import { switchTheme } from "../theme";
 import { Button, Icon, IconButton, isMac, type Theme } from "./ui";
 
 type Section = "general" | "appearance" | "editor" | "compiler";
@@ -262,7 +263,7 @@ export default function SettingsDialog({ open, onClose }: { open: boolean; onClo
                   <Row label="Theme">
                     <Segmented<Theme>
                       value={s.theme}
-                      onChange={(theme) => update({ theme })}
+                      onChange={(theme) => switchTheme(theme, () => update({ theme }))}
                       options={[
                         { value: "light", label: "Light" },
                         { value: "dark", label: "Dark" },

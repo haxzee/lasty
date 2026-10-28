@@ -110,13 +110,13 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
         </div>
 
         <div className="flex flex-1 flex-col items-center overflow-auto px-8 pb-10">
-          <div className="mt-[6vh] flex flex-col items-center text-center">
-            <AppIcon size={96} />
+          <div className="stagger mt-[6vh] flex flex-col items-center text-center">
+            <AppIcon size={96} animated />
             <h1 className="mt-5 text-[34px] font-semibold tracking-tight">Lasty</h1>
             <p className="mt-1 text-muted">{version ? `Version ${version}` : " "}</p>
           </div>
 
-          <div className="mt-10 w-full max-w-sm">
+          <div className="mt-10 w-full max-w-sm animate-[rise-in_650ms_300ms_cubic-bezier(.2,.8,.2,1)_both]">
             {creating ? (
               <form onSubmit={create} className="glass space-y-4 rounded-[22px] p-5">
                 <label className="block space-y-1.5">
@@ -197,12 +197,12 @@ export default function Welcome({ onOpen, onOpenSettings }: WelcomeProps) {
         </div>
       </div>
 
-      <aside className="my-2 mr-2 flex w-80 shrink-0 flex-col overflow-hidden rounded-[18px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)] max-md:hidden">
+      <aside className="my-2 mr-2 flex w-80 animate-[step-next_600ms_150ms_cubic-bezier(.2,.8,.2,1)_both] shrink-0 flex-col overflow-hidden rounded-[18px] bg-sheet shadow-[0_0_0_0.5px_var(--edge),0_1px_3px_var(--lift)] max-md:hidden">
         <h2 data-tauri-drag-region className="px-5 pb-2 pt-4 text-[11px] font-semibold text-muted">Recent</h2>
         {recent.length === 0 ? (
           <p className="px-5 text-muted">No recent projects.</p>
         ) : (
-          <ul className="flex-1 overflow-auto px-2.5 pb-3">
+          <ul className="stagger flex-1 overflow-auto px-2.5 pb-3">
             {recent.map((p) => (
               <li key={p.path} className="group relative">
                 <button
