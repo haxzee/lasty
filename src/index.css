@@ -192,8 +192,14 @@ html.oled .monaco-editor .monaco-hover {
 }
 @keyframes widget-in { from { opacity: 0; transform: scale(0.97) translateY(-2px); } }
 
-.monaco-editor .typed-fade { animation: typed-fade 200ms ease-out; }
-@keyframes typed-fade { from { opacity: 0; } }
+.monaco-editor .typed-fade {
+  display: inline-block;
+  animation: typed-fade 280ms cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes typed-fade {
+  from { opacity: 0; transform: translateY(0.28em); filter: blur(2px); }
+  60% { opacity: 1; filter: blur(0); }
+}
 html.no-typing-animation .monaco-editor .typed-fade { animation: none; }
 
 @keyframes fade-in { from { opacity: 0; } }

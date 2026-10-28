@@ -257,6 +257,8 @@ const DARK_COLORS: monaco.editor.IColors = {
   "editorLineNumber.foreground": "#48484f",
   "editorLineNumber.activeForeground": "#a8a8b0",
   "editorCursor.foreground": "#f0f0f3",
+  "editorError.foreground": "#f0706a",
+  "editorInfo.foreground": "#e0736d",
   "editor.selectionBackground": "#ffffff24",
   "editor.inactiveSelectionBackground": "#ffffff12",
   "editor.selectionHighlightBackground": "#ffffff10",
@@ -298,6 +300,8 @@ const LIGHT_COLORS: monaco.editor.IColors = {
   "editorLineNumber.foreground": "#c4c4cb",
   "editorLineNumber.activeForeground": "#55555c",
   "editorCursor.foreground": "#111114",
+  "editorError.foreground": "#d93a32",
+  "editorInfo.foreground": "#d9534c",
   "editor.selectionBackground": "#0000001c",
   "editor.inactiveSelectionBackground": "#0000000f",
   "editor.selectionHighlightBackground": "#0000000c",
@@ -356,30 +360,75 @@ registerThemes(monaco);
 
 export const editorBehavior = { typingAnimation: true, autoCloseEnvironments: true };
 
+// Monaco re-renders the whole line on every keystroke, which restarts CSS animations.
+// Each typed character is therefore tagged with an age bucket whose negative
+// animation-delay resumes the animation where it left off.
+const TYPED_MS = 280;
+const TYPED_STEP = 16;
+const TYPED_BUCKETS = Math.ceil(TYPED_MS / TYPED_STEP);
+
+const typedStyle = document.createElement("style");
+typedStyle.textContent = Array.from(
+  { length: TYPED_BUCKETS },
+  (_, i) => `.monaco-editor .typed-fade.t${i}{animation-delay:-${i * TYPED_STEP}ms}`,
+).join("\n");
+document.head.appendChild(typedStyle);
+
 export function enhanceEditor(editor: monaco.editor.IStandaloneCodeEditor) {
-  const typed = editor.createDecorationsCollection();
+  let live: { id: string; born: number }[] = [];
   let clearTimer: number | undefined;
+
+  const refreshTyped = (fresh: monaco.Range[] = []) => {
+    const model = editor.getModel();
+    if (!model) return;
+    const now = performance.now();
+    const kept = live.filter((d) => now - d.born < TYPED_MS);
+    const entries = [
+      ...kept.flatMap((d) => {
+        const range = model.getDecorationRange(d.id);
+        return range && !range.isEmpty() ? [{ range, born: d.born }] : [];
+      }),
+      ...fresh.map((range) => ({ range, born: now })),
+    ];
+    const ids = editor.deltaDecorations(
+      live.map((d) => d.id),
+      entries.map(({ range, born }) => ({
+        range,
+        options: {
+          inlineClassName: `typed-fade t${Math.min(TYPED_BUCKETS - 1, Math.floor((now - born) / TYPED_STEP))}`,
+          stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+        },
+      })),
+    );
+    live = ids.map((id, i) => ({ id, born: entries[i].born }));
+
+    clearTimeout(clearTimer);
+    if (live.length) {
+      const oldest = Math.min(...live.map((d) => d.born));
+      clearTimer = window.setTimeout(() => refreshTyped(), Math.max(0, oldest + TYPED_MS - performance.now()) + 1);
+    }
+  };
+
+  const modelSub = editor.onDidChangeModel(() => {
+    live = [];
+    clearTimeout(clearTimer);
+  });
 
   const sub = editor.onDidChangeModelContent((e) => {
     if (e.isUndoing || e.isRedoing || e.isFlush) return;
     const model = editor.getModel();
     if (!model) return;
 
-    const fresh = !editorBehavior.typingAnimation ? [] : e.changes
-      .filter((c) => c.text.length > 0 && c.text.length <= 3 && c.text.trim() && !c.text.includes("\n"))
-      .map((c) => ({
-        range: new monaco.Range(
+    if (editorBehavior.typingAnimation) {
+      const fresh = e.changes
+        .filter((c) => c.text.length > 0 && c.text.length <= 3 && c.text.trim() && !c.text.includes("\n"))
+        .map((c) => new monaco.Range(
           c.range.startLineNumber,
           c.range.startColumn,
           c.range.startLineNumber,
           c.range.startColumn + c.text.length,
-        ),
-        options: { inlineClassName: "typed-fade" },
-      }));
-    if (fresh.length) {
-      typed.set(fresh);
-      clearTimeout(clearTimer);
-      clearTimer = window.setTimeout(() => typed.clear(), 220);
+        ));
+      if (fresh.length || live.length) refreshTyped(fresh);
     }
 
     if (!editorBehavior.autoCloseEnvironments) return;
@@ -412,6 +461,7 @@ export function enhanceEditor(editor: monaco.editor.IStandaloneCodeEditor) {
 
   return () => {
     sub.dispose();
+    modelSub.dispose();
     clearTimeout(clearTimer);
   };
 }
